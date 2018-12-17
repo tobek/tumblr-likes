@@ -107,7 +107,7 @@ fn main() -> Result<(), reqwest::Error> {
     let args = cli();
 
     let client = reqwest::Client::new();
-    let info_url = build_url(&args, true, None);
+    let info_url = build_url(&args, true, None, None);
 
     if args.verbose {
         println!("Info URL: {}", info_url);
@@ -121,7 +121,7 @@ fn main() -> Result<(), reqwest::Error> {
 
     if !info.status().is_success() {
         println!(
-            "There was an error fetching your likes. Please make sure \
+            "There was an error fetching your posts. Please make sure \
              you provided the correct API key and blog name."
         );
         return Ok(());
@@ -133,29 +133,30 @@ fn main() -> Result<(), reqwest::Error> {
         println!("Info: {:#?}", info);
     }
 
-    let bar = ProgressBar::new(info.response.liked_count as _);
+    let bar = ProgressBar::new(info.response.total_posts as _);
 
     setup_directory(&args);
 
     // Do rip
-    let mut before = None;
+    let mut offset = None;
+    let mut page_number = None;
     let mut files: Vec<Vec<Option<PathBuf>>> = Vec::new();
     let mut all_posts: Vec<Post> = Vec::new();
 
     if args.verbose {
-        println!("Downloading likes...");
+        println!("Downloading posts...");
     }
 
     loop {
-        let url = build_url(&args, false, before.clone());
+        let url = build_url(&args, false, offset.clone(), page_number.clone());
 
         let mut res: ReturnVal = client.get(&url).send()?.json()?;
         let _links = res.response._links;
 
         if !args.dump.is_none() || !args.export.is_none() {
-            all_posts.append(&mut res.response.liked_posts);
+            all_posts.append(&mut res.response.posts);
         } else {
-            for post in res.response.liked_posts {
+            for post in res.response.posts {
                 let mut post_files: Vec<Option<PathBuf>> = Vec::new();
 
                 if post.kind == "photo" {
@@ -181,7 +182,8 @@ fn main() -> Result<(), reqwest::Error> {
         }
 
         if let Some(links) = _links {
-            before = Some(links.next.query_params.before);
+            offset = Some(links.next.query_params.offset);
+            page_number = Some(links.next.query_params.page_number);
         } else {
             break;
         }
@@ -200,7 +202,7 @@ fn main() -> Result<(), reqwest::Error> {
         let json = serde_json::to_string(&all_posts).unwrap();
 
         match file.write_all(json.as_bytes()) {
-            Ok(_) => println!("Dumped liked post data to {}.", display),
+            Ok(_) => println!("Dumped post data to {}.", display),
             Err(e) => panic!("Couldn't write to {}: {}", display, e.description()),
         }
 
@@ -244,7 +246,7 @@ static HTML_TEMPLATE: &'static str = "<!DOCTYPE html>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>Tumblr Likes</title>
+    <title>Tumblr Posts</title>
     <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css'>
     <style>
         .container {
@@ -291,7 +293,7 @@ fn export(client: &reqwest::Client, posts: Vec<Post>, file: String) {
     // Create export directory
     fs::create_dir_all("export").expect("Could not create export directory!");
 
-    println!("Exporting your liked posts...");
+    println!("Exporting your posts...");
 
     let mut posts_html = String::new();
 
@@ -445,7 +447,7 @@ fn export(client: &reqwest::Client, posts: Vec<Post>, file: String) {
     };
 
     match file.write_all(out.as_bytes()) {
-        Ok(_) => println!("Exported liked posts to {}.", display),
+        Ok(_) => println!("Exported posts to {}.", display),
         Err(e) => panic!("Couldn't write to {}: {}", display, e.description()),
     }
 }

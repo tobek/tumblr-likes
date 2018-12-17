@@ -4,17 +4,21 @@ use std::path::{Path, PathBuf};
 use types::TrailItem;
 use Arguments;
 
-pub fn build_url(args: &Arguments, one: bool, before: Option<String>) -> String {
+pub fn build_url(args: &Arguments, one: bool, offset: Option<String>, page_number: Option<String>) -> String {
     let limit = if one { 1 } else { 20 };
 
-    let before = match before {
-        Some(b) => format!("&before={}", b),
+    let offset = match offset {
+        Some(b) => format!("&offset={}", b),
+        _ => "".to_string(),
+    };
+    let page_number = match page_number {
+        Some(b) => format!("&page_number={}", b),
         _ => "".to_string(),
     };
 
     format!(
-        "https://api.tumblr.com/v2/blog/{}/likes?api_key={}&limit={}{}",
-        args.blog_name, args.api_key, limit, before
+        "https://api.tumblr.com/v2/blog/{}/posts?api_key={}&limit={}&offset={}&page_number={}",
+        args.blog_name, args.api_key, limit, offset, page_number
     )
 }
 

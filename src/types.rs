@@ -51,7 +51,8 @@ pub struct Post {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
     pub limit: String,
-    pub before: String,
+    pub offset: String,
+    pub page_number: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -66,8 +67,8 @@ pub struct Links {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    pub liked_count: i32,
-    pub liked_posts: Vec<Post>,
+    pub total_posts: i32,
+    pub posts: Vec<Post>,
     pub _links: Option<Links>,
 }
 
